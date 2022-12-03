@@ -15,6 +15,7 @@ using System.Windows.Shapes;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Text.Json;
+using Labb_3;
 
 namespace RestaurantBookingSystem
 {
@@ -26,24 +27,21 @@ namespace RestaurantBookingSystem
         public MainWindow()
         {
             InitializeComponent();
+
         }
+        BookingSystem bookingSystem = new BookingSystem();
+
         /// <summary>
-        /// Displays all the bookings.
+        /// Displays all the bookings
         /// </summary>
         public void DisplayContent()
         {
             Bookings.Items.Clear();
-            foreach (Booking booking in listOfBookings)
+            foreach (Booking booking in bookingSystem.listOfBookings)
             {
                 Bookings.Items.Add($"{booking.Date} {booking.Time} {booking.Name} {booking.TableNumber}");
             }
         }
-
-        List<Booking> listOfBookings = new List<Booking>() {
-            new Booking("25.11.2022", "16:00", "Anna", "1"),
-            new Booking("26.11.2022", "21:00", "Peter", "5"),
-            new Booking("28.11.2022", "19:00", "Karl", "3"),
-            new Booking("29.11.2022", "20:00", "Martin", "2"),};
 
         /// <summary>
         /// Makes a new booking
@@ -56,10 +54,7 @@ namespace RestaurantBookingSystem
             {
                 formatted = selectedDate.Value.ToString("dd.MM.yyyy", System.Globalization.CultureInfo.InvariantCulture);
             }
-
-            List<Booking> Matches = listOfBookings
-    .Where(b => b.Date == formatted && b.Time == TimeChoice.SelectionBoxItem.ToString())
-    .Where(b => b.TableNumber == TableNumberChoice.SelectionBoxItem.ToString()).ToList();
+            Booking booking = new Booking(formatted, TimeChoice.SelectionBoxItem.ToString(), Name.Text, TableNumberChoice.SelectionBoxItem.ToString());
 
             try
             {
@@ -87,16 +82,16 @@ namespace RestaurantBookingSystem
                 {
                     MessageBox.Show("Please enter table number");
                 }
-                else if (Matches.Count < 5)
+                else if (!bookingSystem.isTableFull(booking))
                 {
-                    listOfBookings.Add(new Booking(formatted, TimeChoice.SelectionBoxItem.ToString(), Name.Text, TableNumberChoice.SelectionBoxItem.ToString()));
+                    bookingSystem.listOfBookings.Add(booking);
                     TableNumberChoice.SelectedIndex = -1;
                     MyDatePicker.SelectedDate = null;
                     TimeChoice.SelectedIndex = -1;
                     Name.Text = "";
                     DisplayContent();
                 }
-                else if (listOfBookings
+                else if (bookingSystem.listOfBookings
                     .Where(b => b.Date == formatted && b.Time == TimeChoice.SelectionBoxItem.ToString()).ToList().Count() >= 25)
                 {
                     MessageBox.Show("All seats at five tables for this timeslot are booked. Please try with another timeslot.");
@@ -147,7 +142,7 @@ namespace RestaurantBookingSystem
             if (Bookings.SelectedItem == null)
                 return;
 
-            listOfBookings.RemoveAt(Bookings.SelectedIndex);
+            bookingSystem.listOfBookings.RemoveAt(Bookings.SelectedIndex);
             Bookings.Items.Remove(Bookings.SelectedItem);
         }
 
@@ -156,26 +151,8 @@ namespace RestaurantBookingSystem
         /// </summary>
         private async void OpenFile(object sender, RoutedEventArgs e)
         {
-
-            try
-            {
-                if (File.Exists("bookingsData.json"))
-                {
-                    using FileStream fs = File.OpenRead("bookingsData.json");
-                    listOfBookings = await JsonSerializer.DeserializeAsync<List<Booking>>(fs);
-                    DisplayContent();
-                }
-                else
-                {
-                    MessageBox.Show("Sorry. We couldn't find the data");
-                }
-
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
-            }
-
+            bookingSystem.OpenFile();
+            DisplayContent();
         }
 
         /// <summary>
@@ -185,9 +162,7 @@ namespace RestaurantBookingSystem
         {
             try
             {
-                using FileStream stream = File.Create("bookingsData.json");
-                await JsonSerializer.SerializeAsync(stream, listOfBookings);
-                await stream.DisposeAsync();
+                bookingSystem.SaveFile();
                 Bookings.Items.Clear();
             }
             catch (Exception ex)
@@ -195,6 +170,5 @@ namespace RestaurantBookingSystem
                 MessageBox.Show(ex.Message);
             }
         }
-
     }
 }
